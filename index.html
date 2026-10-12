@@ -10,9 +10,14 @@
 
     <!-- Header -->
     <header class="bg-indigo-600 text-white shadow-md py-4 px-6 mb-6">
-        <div class="max-w-4xl mx-auto flex justify-between items-center">
+        <div class="max-w-4xl mx-auto flex justify-between items-center flex-wrap gap-4">
             <h1 class="text-2xl font-bold">⛺ ניהול הוצאות משותפות</h1>
-            <span id="sync-status" class="text-xs bg-indigo-700 px-3 py-1 rounded-full text-indigo-200">מתחבר לענן...</span>
+            <div class="flex items-center gap-3">
+                <button onclick="exportWhatsAppReport()" class="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-xl text-sm font-semibold shadow transition flex items-center gap-1">
+                    📊 ייצוא דוח לווטסאפ
+                </button>
+                <span id="sync-status" class="text-xs bg-indigo-700 px-3 py-1 rounded-full text-indigo-200">מתחבר לענן...</span>
+            </div>
         </div>
     </header>
 
@@ -21,7 +26,7 @@
 
         <!-- ניהול משתתפים -->
         <section class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-            <h2 class="text-lg font-semibold mb-3 text-gray-700">👥 חברי הקבוצה <span class="text-xs text-indigo-600 font-normal">(הוספה דורשת אישור מנהל 🔒)</span></h2>
+            <h2 class="text-lg font-semibold mb-3 text-gray-700">👥 חברי הקבוצה <span class="text-xs text-indigo-600 font-normal">(הוספה דורשת סיסמת מנהל 🔒)</span></h2>
             <div class="flex gap-2 mb-4">
                 <input type="text" id="new-member-name" placeholder="שם משתתף חדש..." class="flex-grow border border-gray-300 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                 <button onclick="addMember()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-xl font-medium transition">הוסף</button>
@@ -55,6 +60,17 @@
                     </div>
                 </div>
 
+                <!-- בחירת משתתפים שעבורם ההוצאה מיועדת -->
+                <div>
+                    <div class="flex justify-between items-center mb-1">
+                        <label class="block text-sm font-medium text-gray-600">מתחלק בין (בחר משתתפים):</label>
+                        <button type="button" onclick="toggleSelectAllParticipants(true)" class="text-xs text-indigo-600 hover:underline">בחר הכל</button>
+                    </div>
+                    <div id="expense-participants" class="grid grid-cols-2 sm:grid-cols-3 gap-2 bg-gray-50 p-3 rounded-xl border border-gray-200 max-h-36 overflow-y-auto">
+                        <!-- יוכנס דינמית -->
+                    </div>
+                </div>
+
                 <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-xl font-semibold shadow transition">שמור הוצאה בענן</button>
             </form>
         </section>
@@ -73,7 +89,7 @@
 
         <!-- רשימת ההוצאות -->
         <section class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-            <h2 class="text-lg font-semibold mb-4 text-gray-700">📜 היסטוריית הוצאות <span class="text-xs text-red-500 font-normal">(מחיקה דורשת אישור מנהל 🔒)</span></h2>
+            <h2 class="text-lg font-semibold mb-4 text-gray-700">📜 היסטוריית הוצאות <span class="text-xs text-red-500 font-normal">(מחיקה דורשת סיסמת מנהל 🔒)</span></h2>
             <div class="overflow-x-auto">
                 <table class="w-full text-right">
                     <thead>
@@ -81,7 +97,7 @@
                             <th class="pb-2">תאריך</th>
                             <th class="pb-2">תיאור</th>
                             <th class="pb-2">סכום</th>
-                            <th class="pb-2">שילם</th>
+                            <th class="pb-2">שילם / מתחלק בין</th>
                             <th class="pb-2 text-center">פעולות</th>
                         </tr>
                     </thead>
@@ -106,7 +122,7 @@
             appId: "1:22368681909:web:f5c0e03b6864d619fb63fc"
         };
 
-        const ADMIN_PASSWORD = "1986"; // 🔐 סיסמת המנהל המעודכנת
+        const ADMIN_PASSWORD = "1986";
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
@@ -140,7 +156,6 @@
             }
         }
 
-        // הוספת משתתף מוגנת בסיסמה
         window.addMember = async function() {
             const password = prompt("הכנס סיסמת מנהל להוספת משתתף:");
             if (password !== ADMIN_PASSWORD) {
@@ -163,7 +178,6 @@
             }
         }
 
-        // מחיקת משתתף מוגנת בסיסמה
         window.removeMember = async function(id) {
             const password = prompt("הכנס סיסמת מנהל למחיקת משתתף:");
             if (password !== ADMIN_PASSWORD) {
@@ -176,7 +190,11 @@
             }
         }
 
-        // הוספת הוצאה (פתוחה לכולם בלי סיסמה)
+        window.toggleSelectAllParticipants = function(select) {
+            const checkboxes = document.querySelectorAll('.participant-checkbox');
+            checkboxes.forEach(cb => cb.checked = select);
+        }
+
         window.addExpense = async function(event) {
             event.preventDefault();
             if (members.length === 0) {
@@ -189,16 +207,25 @@
             const payer = document.getElementById('expense-payer').value;
             const date = document.getElementById('expense-date').value;
 
+            // איסוף משתתפים נבחרים
+            const checkboxes = document.querySelectorAll('.participant-checkbox:checked');
+            let participants = Array.from(checkboxes).map(cb => cb.value);
+
+            if (participants.length === 0) {
+                alert("יש לבחור לפחות משתתף אחד שההוצאה מתחלקת עליו!");
+                return;
+            }
+
             try {
-                await addDoc(collection(db, "expenses"), { description, amount, payer, date });
+                await addDoc(collection(db, "expenses"), { description, amount, payer, date, participants });
                 document.getElementById('expense-form').reset();
                 document.getElementById('expense-date').valueAsDate = new Date();
+                toggleSelectAllParticipants(true); // איפוס ברירת מחדל לכולם
             } catch (e) {
                 alert("שגיאה בהוספת הוצאה: " + e.message);
             }
         }
 
-        // מחיקת הוצאה מוגנת בסיסמה
         window.removeExpense = async function(id) {
             const password = prompt("הכנס סיסמת מנהל למחיקת הוצאה:");
             if (password !== ADMIN_PASSWORD) {
@@ -211,34 +238,87 @@
             }
         }
 
+        window.exportWhatsAppReport = function() {
+            if (members.length === 0 || expenses.length === 0) {
+                alert("אין מספיק נתונים לייצוא דוח.");
+                return;
+            }
+
+            let totalSpent = expenses.reduce((sum, exp) => sum + Number(exp.amount), 0);
+            let report = `⛺ *דוח הוצאות קבוצתי - טיול* ⛺\n`;
+            report += `━━━━━━━━━━━━━━━━━━━\n`;
+            report += `💰 סך הכל הוצאות: ₪${totalSpent.toFixed(2)}\n`;
+            report += `👥 מספר משתתפים: ${members.length}\n\n`;
+
+            report += `📊 *מאזן אישי:*\n`;
+            
+            // חישוב נתונים לצורך הדוח
+            let { netBalances, settlements } = calculateCalculationsData();
+
+            members.forEach(m => {
+                let net = netBalances[m.name] || 0;
+                let status = net >= 0 ? `זכאי לקבל ₪${net.toFixed(2)}` : `חייב ₪${Math.abs(net).toFixed(2)}`;
+                report += `• ${m.name}: ${status}\n`;
+            });
+
+            report += `\n💡 *קיזוז חובות מומלץ:*\n`;
+            if (settlements.length === 0) {
+                report += `הכל מאוזן! אין חובות פתוחים ✨\n`;
+            } else {
+                settlements.forEach(s => {
+                    report += `• ${s}\n`;
+                });
+            }
+            report += `━━━━━━━━━━━━━━━━━━━`;
+
+            // העתקה ללוח
+            navigator.clipboard.writeText(report).then(() => {
+                alert("📋 הדוח הועתק בהצלחה! הדבק אותו עכשיו בקבוצת הווטסאפ.");
+            }).catch(err => {
+                prompt("העתק את הדוח הבא:", report);
+            });
+        }
+
         function updateUI() {
             const membersContainer = document.getElementById('members-list');
             const payerSelect = document.getElementById('expense-payer');
+            const participantsContainer = document.getElementById('expense-participants');
             
             membersContainer.innerHTML = '';
             payerSelect.innerHTML = '';
+            participantsContainer.innerHTML = '';
 
             members.forEach(m => {
+                // תגית משתתף
                 const tag = document.createElement('div');
                 tag.className = "bg-indigo-50 text-indigo-700 px-3 py-1 rounded-full text-sm flex items-center gap-2 border border-indigo-100";
                 tag.innerHTML = `<span>${m.name}</span> <button onclick="removeMember('${m.id}')" class="text-red-400 hover:text-red-600 font-bold" title="מחיקת משתתף (דורש סיסמה)">&times;</button>`;
                 membersContainer.appendChild(tag);
 
+                // אופציה במי שילם
                 const option = document.createElement('option');
                 option.value = m.name;
                 option.textContent = m.name;
                 payerSelect.appendChild(option);
+
+                // תיבת בחירה למשתתפים בהוצאה
+                const label = document.createElement('label');
+                label.className = "flex items-center gap-2 text-sm bg-white p-2 rounded-lg border border-gray-100 cursor-pointer hover:bg-gray-100";
+                label.innerHTML = `<input type="checkbox" value="${m.name}" checked class="participant-checkbox rounded text-indigo-600 focus:ring-indigo-500"> ${m.name}`;
+                participantsContainer.appendChild(label);
             });
 
+            // טבלת הוצאות
             const tbody = document.getElementById('expenses-table-body');
             tbody.innerHTML = '';
             expenses.sort((a, b) => new Date(b.date) - new Date(a.date)).forEach(exp => {
+                let participantsText = exp.participants ? `מתחלק בין: ${exp.participants.join(', ')}` : 'מתחלק בין כולם';
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td class="py-3 text-gray-500">${exp.date}</td>
                     <td class="py-3 font-medium">${exp.description}</td>
                     <td class="py-3 text-emerald-600 font-semibold">₪${Number(exp.amount).toFixed(2)}</td>
-                    <td class="py-3">${exp.payer}</td>
+                    <td class="py-3 text-xs text-gray-600">שילם: <span class="font-semibold text-gray-800">${exp.payer}</span><br><span class="text-gray-400">${participantsText}</span></td>
                     <td class="py-3 text-center">
                         <button onclick="removeExpense('${exp.id}')" class="text-red-500 hover:text-red-700 text-xs bg-red-50 px-2 py-1 rounded-lg">מחק (🔒)</button>
                     </td>
@@ -249,47 +329,41 @@
             calculateBalances();
         }
 
-        function calculateBalances() {
-            const balancesList = document.getElementById('balances-list');
-            const settlementsList = document.getElementById('settlements-list');
-            balancesList.innerHTML = '';
-            settlementsList.innerHTML = '';
-
-            if (members.length === 0) {
-                balancesList.innerHTML = '<p class="text-gray-400 text-sm">אין משתתפים עדיין.</p>';
-                settlementsList.innerHTML = '<p class="text-gray-400 text-sm">אין נתונים לחישוב.</p>';
-                return;
-            }
-
-            const totalSpent = expenses.reduce((sum, exp) => sum + Number(exp.amount), 0);
-            const sharePerPerson = totalSpent / members.length;
-
+        function calculateCalculationsData() {
             let balances = {};
-            members.forEach(m => balances[m.name] = 0);
+            let owed = {};
+            members.forEach(m => {
+                balances[m.name] = 0;
+                owed[m.name] = 0;
+            });
 
             expenses.forEach(exp => {
+                let amount = Number(exp.amount);
+                // אם אין רשימת משתתפים (הוצאות ישנות), מתחלק על כולם
+                let participants = exp.participants && exp.participants.length > 0 ? exp.participants : members.map(m => m.name);
+                
+                // כמה כל משתתף ברשימה צריך לשלם עבור ההוצאה הזו
+                let sharePerParticipant = participants.length > 0 ? amount / participants.length : 0;
+
                 if (balances.hasOwnProperty(exp.payer)) {
-                    balances[exp.payer] += Number(exp.amount);
+                    balances[exp.payer] += amount;
                 }
+
+                participants.forEach(p => {
+                    if (owed.hasOwnProperty(p)) {
+                        owed[p] += sharePerParticipant;
+                    }
+                });
             });
 
             let netBalances = {};
             members.forEach(m => {
-                let paid = balances[m.name];
-                netBalances[m.name] = paid - sharePerPerson;
-
-                const div = document.createElement('div');
-                div.className = "flex justify-between items-center bg-gray-50 p-3 rounded-xl border border-gray-100";
-                let statusColor = netBalances[m.name] >= 0 ? 'text-emerald-600' : 'text-red-600';
-                let statusText = netBalances[m.name] >= 0 ? `בזכות (₪${Math.abs(netBalances[m.name]).toFixed(2)})` : `חייב (₪${Math.abs(netBalances[m.name]).toFixed(2)})`;
-                
-                div.innerHTML = `
-                    <span class="font-medium">${m.name}</span>
-                    <span class="text-sm font-semibold ${statusColor}">${statusText}</span>
-                `;
-                balancesList.appendChild(div);
+                let paid = balances[m.name] || 0;
+                let share = owed[m.name] || 0;
+                netBalances[m.name] = paid - share;
             });
 
+            // חישוב קיזוז חובות
             let debtors = [];
             let creditors = [];
 
@@ -306,7 +380,7 @@
                 let credit = creditors[j];
                 let amountToTransfer = Math.min(debt.amount, credit.amount);
 
-                settlements.push(`${debt.name} ⬅️ מעביר ל-${credit.name}: <span class="font-bold text-indigo-600">₪${amountToTransfer.toFixed(2)}</span>`);
+                settlements.push(`${debt.name} ⬅️ מעביר ל-${credit.name}: ₪${amountToTransfer.toFixed(2)}`);
 
                 debt.amount -= amountToTransfer;
                 credit.amount -= amountToTransfer;
@@ -314,6 +388,37 @@
                 if (debt.amount < 0.01) i++;
                 if (credit.amount < 0.01) j++;
             }
+
+            return { netBalances, settlements };
+        }
+
+        function calculateBalances() {
+            const balancesList = document.getElementById('balances-list');
+            const settlementsList = document.getElementById('settlements-list');
+            balancesList.innerHTML = '';
+            settlementsList.innerHTML = '';
+
+            if (members.length === 0) {
+                balancesList.innerHTML = '<p class="text-gray-400 text-sm">אין משתתפים עדיין.</p>';
+                settlementsList.innerHTML = '<p class="text-gray-400 text-sm">אין נתונים לחישוב.</p>';
+                return;
+            }
+
+            let { netBalances, settlements } = calculateCalculationsData();
+
+            members.forEach(m => {
+                let net = netBalances[m.name] || 0;
+                const div = document.createElement('div');
+                div.className = "flex justify-between items-center bg-gray-50 p-3 rounded-xl border border-gray-100";
+                let statusColor = net >= 0 ? 'text-emerald-600' : 'text-red-600';
+                let statusText = net >= 0 ? `בזכות (₪${Math.abs(net).toFixed(2)})` : `חייב (₪${Math.abs(net).toFixed(2)})`;
+                
+                div.innerHTML = `
+                    <span class="font-medium">${m.name}</span>
+                    <span class="text-sm font-semibold ${statusColor}">${statusText}</span>
+                `;
+                balancesList.appendChild(div);
+            });
 
             if (settlements.length === 0) {
                 settlementsList.innerHTML = '<p class="text-gray-400 text-sm">הכל מאוזן אין חובות כרגע! ✨</p>';
