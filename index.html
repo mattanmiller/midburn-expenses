@@ -4,20 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ניהול הוצאות משותפות - טיול/קמפ</title>
-    <!-- טעינת Tailwind CSS לעיצוב נקי ומתקדם -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        primary: '#4f46e5',
-                        secondary: '#06b6d4'
-                    }
-                }
-            }
-        }
-    </script>
 </head>
 <body class="bg-gray-50 text-gray-800 min-h-screen flex flex-col">
 
@@ -25,7 +12,7 @@
     <header class="bg-indigo-600 text-white shadow-md py-4 px-6 mb-6">
         <div class="max-w-4xl mx-auto flex justify-between items-center">
             <h1 class="text-2xl font-bold">⛺ ניהול הוצאות משותפות</h1>
-            <span id="sync-status" class="text-xs bg-indigo-700 px-3 py-1 rounded-full text-indigo-200">מסתנכרן עם הענן...</span>
+            <span id="sync-status" class="text-xs bg-indigo-700 px-3 py-1 rounded-full text-indigo-200">מתחבר לענן...</span>
         </div>
     </header>
 
@@ -39,9 +26,7 @@
                 <input type="text" id="new-member-name" placeholder="שם משתתף חדש..." class="flex-grow border border-gray-300 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                 <button onclick="addMember()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-xl font-medium transition">הוסף</button>
             </div>
-            <div id="members-list" class="flex flex-wrap gap-2">
-                <!-- יוכנס דינמית -->
-            </div>
+            <div id="members-list" class="flex flex-wrap gap-2"></div>
         </section>
 
         <!-- הוספת הוצאה חדשה -->
@@ -62,9 +47,7 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-600 mb-1">מי שילם?</label>
-                        <select id="expense-payer" required class="w-full border border-gray-300 rounded-xl px-4 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                            <!-- יוכנס דינמית -->
-                        </select>
+                        <select id="expense-payer" required class="w-full border border-gray-300 rounded-xl px-4 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"></select>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-600 mb-1">תאריך</label>
@@ -78,22 +61,257 @@
 
         <!-- סיכום ומאזן -->
         <section class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <!-- מאזן אישי -->
             <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
                 <h2 class="text-lg font-semibold mb-4 text-gray-700">📊 מאזן אישי</h2>
-                <div id="balances-list" class="space-y-3">
-                    <!-- יוכנס דינמית -->
-                </div>
+                <div id="balances-list" class="space-y-3"></div>
             </div>
-
-            <!-- המלצה לקישור חובות -->
             <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
                 <h2 class="text-lg font-semibold mb-4 text-gray-700">💡 קיזוז חובות אופטימלי</h2>
-                <div id="settlements-list" class="space-y-3">
-                    <!-- יוכנס דינמית -->
-                </div>
+                <div id="settlements-list" class="space-y-3"></div>
             </div>
         </section>
 
         <!-- רשימת ההוצאות -->
-        <section class="bg-white p-6 rounded-2xl shadow-sm border border
+        <section class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+            <h2 class="text-lg font-semibold mb-4 text-gray-700">📜 היסטוריית הוצאות</h2>
+            <div class="overflow-x-auto">
+                <table class="w-full text-right">
+                    <thead>
+                        <tr class="border-b text-gray-500 text-sm">
+                            <th class="pb-2">תאריך</th>
+                            <th class="pb-2">תיאור</th>
+                            <th class="pb-2">סכום</th>
+                            <th class="pb-2">שילם</th>
+                            <th class="pb-2 text-center">פעולות</th>
+                        </tr>
+                    </thead>
+                    <tbody id="expenses-table-body" class="divide-y text-sm"></tbody>
+                </table>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- סקריפטים של Firebase -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getFirestore, collection, addDoc, deleteDoc, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBsTP4RQMcQ09J3fWEzqdR9vCYoyiAlpa8",
+            authDomain: "midburn-2026-camp.firebaseapp.com",
+            projectId: "midburn-2026-camp",
+            storageBucket: "midburn-2026-camp.firebasestorage.app",
+            messagingSenderId: "22368681909",
+            appId: "1:22368681909:web:f5c0e03b6864d619fb63fc"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        document.getElementById('expense-date').valueAsDate = new Date();
+
+        let members = [];
+        let expenses = [];
+
+        function initRealtimeSync() {
+            try {
+                // האזנה למשתתפים
+                onSnapshot(collection(db, "members"), (snapshot) => {
+                    members = [];
+                    snapshot.forEach((docSnap) => {
+                        members.push({ id: docSnap.id, ...docSnap.data() });
+                    });
+                    updateUI();
+                    document.getElementById('sync-status').innerText = "מחובר לענן 🟢";
+                }, (error) => {
+                    console.error("Firestore Error:", error);
+                    document.getElementById('sync-status').innerText = "שגיאת חיבור 🔴";
+                });
+
+                // האזנה להוצאות
+                onSnapshot(collection(db, "expenses"), (snapshot) => {
+                    expenses = [];
+                    snapshot.forEach((docSnap) => {
+                        expenses.push({ id: docSnap.id, ...docSnap.data() });
+                    });
+                    updateUI();
+                }, (error) => {
+                    console.error("Firestore Error:", error);
+                });
+
+            } catch (e) {
+                console.error("Init Error:", e);
+                document.getElementById('sync-status').innerText = "שגיאת התחברות 🔴";
+            }
+        }
+
+        window.addMember = async function() {
+            const nameInput = document.getElementById('new-member-name');
+            const name = nameInput.value.trim();
+            if (!name) return;
+            if (members.some(m => m.name === name)) {
+                alert("המשתתף כבר קיים!");
+                return;
+            }
+            try {
+                await addDoc(collection(db, "members"), { name });
+                nameInput.value = '';
+            } catch (e) {
+                alert("שגיאה בהוספת משתתף: " + e.message);
+            }
+        }
+
+        window.removeMember = async function(id) {
+            if (confirm("בטוח שתרצה למחוק משתתף זה?")) {
+                await deleteDoc(doc(db, "members", id));
+            }
+        }
+
+        window.addExpense = async function(event) {
+            event.preventDefault();
+            if (members.length === 0) {
+                alert("חובה להוסיף לפחות משתתף אחד לפני שמזינים הוצאות!");
+                return;
+            }
+
+            const description = document.getElementById('expense-desc').value;
+            const amount = parseFloat(document.getElementById('expense-amount').value);
+            const payer = document.getElementById('expense-payer').value;
+            const date = document.getElementById('expense-date').value;
+
+            try {
+                await addDoc(collection(db, "expenses"), { description, amount, payer, date });
+                document.getElementById('expense-form').reset();
+                document.getElementById('expense-date').valueAsDate = new Date();
+            } catch (e) {
+                alert("שגיאה בהוספת הוצאה: " + e.message);
+            }
+        }
+
+        window.removeExpense = async function(id) {
+            if (confirm("למחוק את ההוצאה הזו?")) {
+                await deleteDoc(doc(db, "expenses", id));
+            }
+        }
+
+        function updateUI() {
+            const membersContainer = document.getElementById('members-list');
+            const payerSelect = document.getElementById('expense-payer');
+            
+            membersContainer.innerHTML = '';
+            payerSelect.innerHTML = '';
+
+            members.forEach(m => {
+                const tag = document.createElement('div');
+                tag.className = "bg-indigo-50 text-indigo-700 px-3 py-1 rounded-full text-sm flex items-center gap-2 border border-indigo-100";
+                tag.innerHTML = `<span>${m.name}</span> <button onclick="removeMember('${m.id}')" class="text-red-400 hover:text-red-600 font-bold">&times;</button>`;
+                membersContainer.appendChild(tag);
+
+                const option = document.createElement('option');
+                option.value = m.name;
+                option.textContent = m.name;
+                payerSelect.appendChild(option);
+            });
+
+            const tbody = document.getElementById('expenses-table-body');
+            tbody.innerHTML = '';
+            expenses.sort((a, b) => new Date(b.date) - new Date(a.date)).forEach(exp => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="py-3 text-gray-500">${exp.date}</td>
+                    <td class="py-3 font-medium">${exp.description}</td>
+                    <td class="py-3 text-emerald-600 font-semibold">₪${Number(exp.amount).toFixed(2)}</td>
+                    <td class="py-3">${exp.payer}</td>
+                    <td class="py-3 text-center">
+                        <button onclick="removeExpense('${exp.id}')" class="text-red-500 hover:text-red-700 text-xs bg-red-50 px-2 py-1 rounded-lg">מחק</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            calculateBalances();
+        }
+
+        function calculateBalances() {
+            const balancesList = document.getElementById('balances-list');
+            const settlementsList = document.getElementById('settlements-list');
+            balancesList.innerHTML = '';
+            settlementsList.innerHTML = '';
+
+            if (members.length === 0) {
+                balancesList.innerHTML = '<p class="text-gray-400 text-sm">אין משתתפים עדיין.</p>';
+                settlementsList.innerHTML = '<p class="text-gray-400 text-sm">אין נתונים לחישוב.</p>';
+                return;
+            }
+
+            const totalSpent = expenses.reduce((sum, exp) => sum + Number(exp.amount), 0);
+            const sharePerPerson = totalSpent / members.length;
+
+            let balances = {};
+            members.forEach(m => balances[m.name] = 0);
+
+            expenses.forEach(exp => {
+                if (balances.hasOwnProperty(exp.payer)) {
+                    balances[exp.payer] += Number(exp.amount);
+                }
+            });
+
+            let netBalances = {};
+            members.forEach(m => {
+                let paid = balances[m.name];
+                netBalances[m.name] = paid - sharePerPerson;
+
+                const div = document.createElement('div');
+                div.className = "flex justify-between items-center bg-gray-50 p-3 rounded-xl border border-gray-100";
+                let statusColor = netBalances[m.name] >= 0 ? 'text-emerald-600' : 'text-red-600';
+                let statusText = netBalances[m.name] >= 0 ? `בזכות (₪${Math.abs(netBalances[m.name]).toFixed(2)})` : `חייב (₪${Math.abs(netBalances[m.name]).toFixed(2)})`;
+                
+                div.innerHTML = `
+                    <span class="font-medium">${m.name}</span>
+                    <span class="text-sm font-semibold ${statusColor}">${statusText}</span>
+                `;
+                balancesList.appendChild(div);
+            });
+
+            let debtors = [];
+            let creditors = [];
+
+            for (let name in netBalances) {
+                let val = netBalances[name];
+                if (val < -0.01) debtors.push({ name, amount: -val });
+                else if (val > 0.01) creditors.push({ name, amount: val });
+            }
+
+            let settlements = [];
+            let i = 0, j = 0;
+            while (i < debtors.length && j < creditors.length) {
+                let debt = debtors[i];
+                let credit = creditors[j];
+                let amountToTransfer = Math.min(debt.amount, credit.amount);
+
+                settlements.push(`${debt.name} ⬅️ מעביר ל-${credit.name}: <span class="font-bold text-indigo-600">₪${amountToTransfer.toFixed(2)}</span>`);
+
+                debt.amount -= amountToTransfer;
+                credit.amount -= amountToTransfer;
+
+                if (debt.amount < 0.01) i++;
+                if (credit.amount < 0.01) j++;
+            }
+
+            if (settlements.length === 0) {
+                settlementsList.innerHTML = '<p class="text-gray-400 text-sm">הכל מאוזן אין חובות כרגע! ✨</p>';
+            } else {
+                settlements.forEach(s => {
+                    const p = document.createElement('div');
+                    p.className = "bg-indigo-50/50 p-3 rounded-xl border border-indigo-100 text-sm";
+                    p.innerHTML = s;
+                    settlementsList.appendChild(p);
+                });
+            }
+        }
+
+        initRealtimeSync();
+    </script>
+</body>
+</html>
