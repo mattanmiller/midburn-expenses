@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>מנהל הוצאות לטיול</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts (Heebo) -->
+    <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Heebo', sans-serif;
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
+
+    <header class="bg-indigo-600 text-white shadow-md sticky top-0 z-50">
+        <div class="max-w-6xl mx-auto px-4 py-4 flex flex-wrap justify-between items-center gap-4">
+            <div class="flex items-center gap-3">
+                <div class="bg-white/10 p-2.5 rounded-xl backdrop-blur-sm">
+                    <i class="fa-solid fa-wallet text-2xl text-indigo-100"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold tracking-tight">התחשבנות טיולים</h1>
+                    <p class="text-xs text-indigo-200">ניהול הוצאות חכם וקיזוז חובות אוטומטי</p>
+                </div>
+            </div>
+            
+            <!-- Quick Actions -->
+            <div class="flex items-center gap-2 flex-wrap">
+                <button onclick="openModal('expenseModal')" class="bg-white text-indigo-600 hover:bg-indigo-50 px-4 py-2 rounded-xl font-medium text-sm transition shadow-sm flex items-center gap-2">
+                    <i class="fa-solid fa-plus"></i> הוסף הוצאה
+                </button>
+                <button onclick="openModal('participantsModal')" class="bg-indigo-700 hover:bg-indigo-800 px-3 py-2 rounded-xl text-sm font-medium transition flex items-center gap-2">
+                    <i class="fa-solid fa-users"></i> ניהול משתתפים
+                </button>
+                <div class="relative group">
+                    <button class="bg-indigo-700 hover:bg-indigo-800 p-2 rounded-xl text-sm font-medium transition flex items-center justify-center w-10 h-10">
+                        <i class="fa-solid fa-ellipsis-vertical"></i>
+                    </button>
+                    <div class="absolute left-0 mt-2 w-48 bg-white text-slate-700 rounded-xl shadow-xl py-2 hidden group-hover:block z-50 border border-slate-100">
+                        <button onclick="exportData()" class="w-full text-right px-4 py-2 hover:bg-slate-50 text-sm flex items-center gap-2">
+                            <i class="fa-solid fa-download text-slate-400"></i> ייצוא נתונים (JSON)
+                        </button>
+                        <label class="w-full text-right px-4 py-2 hover:bg-slate-50 text-sm flex items-center gap-2 cursor-pointer">
+                            <i class="fa-solid fa-upload text-slate-400"></i> ייבוא נתונים
+                            <input type="file" id="importFile" accept=".json" onchange="importData(event)" class="hidden">
+                        </label>
+                        <div class="border-t border-slate-100 my-1"></div>
+                        <button onclick="resetData()" class="w-full text-right px-4 py-2 hover:bg-rose-50 text-rose-600 text-sm flex items-center gap-2">
+                            <i class="fa-solid fa-trash-can"></i> איפוס הכל
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-6xl mx-auto px-4 py-6 flex-1 w-full grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        <!-- Right / Main Section: Statistics & Expenses List -->
+        <div class="lg:col-span-2 space-y-6">
+            
+            <!-- Statistics Cards -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4">
+                    <div class="bg-indigo-50 text-indigo-600 p-4 rounded-xl text-xl">
+                        <i class="fa-solid fa-coins"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs text-slate-400 font-medium">סך הכל הוצאות לטיול</p>
+                        <h3 id="totalSpent" class="text-2xl font-bold text-slate-800">₪0.00</h3>
+                    </div>
+                </div>
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4">
+                    <div class="bg-emerald-50 text-emerald-600 p-4 rounded-xl text-xl">
+                        <i class="fa-solid fa-receipt"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs text-slate-400 font-medium">מספר הוצאות רשומות</p>
+                        <h3 id="totalExpensesCount" class="text-2xl font-bold text-slate-800">0</h3>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Expenses Section -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                <div class="p-5 border-b border-slate-100 flex flex-wrap justify-between items-center gap-4">
+                    <h2 class="font-bold text-slate-800 text-lg flex items-center gap-2">
+                        <i class="fa-solid fa-list text-indigo-600"></i> רשימת הוצאות
+                    </h2>
+                    <div class="flex items-center gap-2">
+                        <div class="relative">
+                            <input type="text" id="searchInput" oninput="renderExpenses()" placeholder="חיפוש הוצאה..." class="bg-slate-50 border border-slate-200 text-sm rounded-xl px-3 py-1.5 pr-9 focus:outline-none focus:border-indigo-500 w-44">
+                            <i class="fa-solid fa-search absolute right-3 top-2.5 text-slate-400 text-xs"></i>
+                        </div>
+                        <select id="filterPayer" onchange="renderExpenses()" class="bg-slate-50 border border-slate-200 text-sm rounded-xl px-3 py-1.5 focus:outline-none focus:border-indigo-500">
+                            <option value="">כל המשלמים</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Expense List Container -->
+                <div id="expensesContainer" class="divide-y divide-slate-100 max-h-[500px] overflow-y-auto">
+                    <!-- Dynamically populated -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Left Sidebar: Balances & Smart Settlement -->
+        <div class="space-y-6">
+            
+            <!-- Member Balances -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
+                <h2 class="font-bold text-slate-800 text-lg mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-scale-balanced text-indigo-600"></i> מאזן אישי
+                </h2>
+                <div id="balancesContainer" class="space-y-3">
+                    <!-- Dynamically populated -->
+                </div>
+            </div>
+
+            <!-- Smart Settlement Algorithm Box -->
+            <div class="bg-gradient-to-br from-indigo-900 to-indigo-800 text-white rounded-2xl shadow-md p-5">
+                <h2 class="font-bold text-lg mb-2 flex items-center gap-2">
+                    <i class="fa-solid fa-wand-magic-sparkles text-amber-300"></i> קיזוז חובות חכם
+                </h2>
+                <p class="text-xs text-indigo-200 mb-4">מינימום העברות נדרשות כדי לאפס את החשבון בין כולם:</p>
+                <div id="settlementContainer" class="space-y-3">
+                    <!-- Dynamically populated -->
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <div id="expenseModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                <h3 id="expenseModalTitle" class="font-bold text-slate-800 text-lg">הוספת הוצאה חדשה</h3>
+                <button onclick="closeModal('expenseModal')" class="text-slate-400 hover:text-slate-600 w-8 h-8 rounded-full flex items-center justify-center">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <form id="expenseForm" onsubmit="handleExpenseSubmit(event)" class="p-6 space-y-4">
+                <input type="hidden" id="expenseId">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">תיאור ההוצאה / על מה?</label>
+                    <input type="text" id="expenseDesc" required placeholder="לדוגמה: ארוחת ערב במסעדה, דלק..." class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-indigo-500">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">סכום (₪)</label>
+                        <input type="number" step="0.01" min="0.01" id="expenseAmount" required placeholder="0.00" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">תאריך</label>
+                        <input type="date" id="expenseDate" required class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-indigo-500">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">מי שילם?</label>
+                    <select id="expensePayer" required class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-indigo-500">
+                        <!-- Dynamically populated -->
+                    </select>
+                </div>
+                <div>
+                    <div class="flex justify-between items-center mb-1">
+                        <label class="block text-xs font-semibold text-slate-600">התחלק בין:</label>
+                        <div class="space-x-2 space-x-reverse text-xs">
+                            <button type="button" onclick="toggleAllParticipants(true)" class="text-indigo-600 hover:underline">בחר הכל</button>
+                            <span class="text-slate-300">|</span>
+                            <button type="button" onclick="toggleAllParticipants(false)" class="text-slate-500 hover:underline">נקה הכל</button>
+                        </div>
+                    </div>
+                    <div id="splitParticipantsContainer" class="bg-slate-50 border border-slate-200 rounded-xl p-3 max-h-40 overflow-y-auto space-y-2">
+                        <!-- Dynamically populated checkboxes -->
+                    </div>
+                </div>
+                <div class="flex justify-end gap-3 pt-2">
+                    <button type="button" onclick="closeModal('expenseModal')" class="px-4 py-2 rounded-xl text-sm font-medium bg-slate-100 hover:bg-slate-200 text-slate-600 transition">ביטול</button>
+                    <button type="submit" class="px-5 py-2 rounded-xl text-sm font-medium bg-indigo-600 hover:bg-indigo-700 text-white transition shadow-sm">שמור הוצאה</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="participantsModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                <h3 class="font-bold text-slate-800 text-lg">ניהול משתתפי הטיול</h3>
+                <button onclick="closeModal('participantsModal')" class="text-slate-400 hover:text-slate-600 w-8 h-8 rounded-full flex items-center justify-center">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <div class="p-6 space-y-4">
+                <form onsubmit="handleAddParticipant(event)" class="flex gap-2">
+                    <input type="text" id="newParticipantName" required placeholder="שם המשתתף..." class="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-indigo-500">
+                    <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-sm font-medium transition shadow-sm flex items-center gap-1">
+                        <i class="fa-solid fa-plus"></i> הוסף
+                    </button>
+                </form>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-2">משתתפים קיימים:</label>
+                    <div id="participantsList" class="divide-y divide-slate-100 max-h-60 overflow-y-auto border border-slate-100 rounded-xl">
+                        <!-- Dynamically populated -->
+                    </div>
+                </div>
+                <div class="flex justify-end pt-2">
+                    <button type="button" onclick="closeModal('participantsModal')" class="px-5 py-2 rounded-xl text-sm font-medium bg-indigo-600 text-white hover:bg-indigo-700 transition">סיום</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Notification/Message Modal -->
+    <div id="messageModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 text-center space-y-4">
+            <div id="messageIcon" class="w-12 h-12 rounded-full mx-auto flex items-center justify-center text-xl"></div>
+            <h3 id="messageTitle" class="font-bold text-lg text-slate-800"></h3>
+            <p id="messageText" class="text-sm text-slate-600"></p>
+            <button onclick="closeMessageModal()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2.5 rounded-xl font-medium text-sm transition">אישור</button>
+        </div>
+    </div>
+
+    <script>
+        // State management
+        let state = {
+            participants: ['אלון', 'נועה', 'יובל', 'מאיה'],
+            expenses: []
+        };
+
+        // Load data from localStorage on startup
+        function loadData() {
+            const saved = localStorage.getItem('trip_expenses_app_data');
+            if (saved) {
+                try {
+                    state = JSON.parse(saved);
+                } catch (e) {
+                    console.error('Error loading data', e);
+                }
+            } else {
+                // Default sample expenses if empty
+                state.expenses = [
+                    { id: '1', desc: 'קניות בסופר', amount: 350, date: new Date().toISOString().split('T')[0], payer: 'אלון', splitBetween: ['אלון', 'נועה', 'יובל', 'מאיה'] },
+                    { id: '2', desc: 'דלק לטיול', amount: 200, date: new Date().toISOString().split('T')[0], payer: 'נועה', splitBetween: ['אלון', 'נועה', 'יובל', 'מאיה'] }
+                ];
+                saveData();
+            }
+        }
+
+        function saveData() {
+            localStorage.setItem('trip_expenses_app_data', JSON.stringify(state));
+        }
+
+        // Modal Controls
+        function openModal(modalId) {
+            if (modalId === 'expenseModal') {
+                if (state.participants.length === 0) {
+                    showMessage('שגיאה', 'יש להוסיף לפחות משתתף אחד לפני הוספת הוצאה.', 'error');
+                    return;
+                }
+                document.getElementById('expenseForm').reset();
+                document.getElementById('expenseId').value = '';
+                document.getElementById('expenseModalTitle').innerText = 'הוספת הוצאה חדשה';
+                document.getElementById('expenseDate').value = new Date().toISOString().split('T')[0];
+                populatePayerDropdown();
+                populateSplitCheckboxes(state.participants);
+            }
+            if (modalId === 'participantsModal') {
+                renderParticipantsList();
+            }
+            document.getElementById(modalId).classList.remove('hidden');
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.add('hidden');
+        }
+
+        function showMessage(title, text, type = 'success') {
+            const iconEl = document.getElementById('messageIcon');
+            if (type === 'success') {
+                iconEl.className = 'w-12 h-12 rounded-full mx-auto flex items-center justify-center text-xl bg-emerald-50 text-emerald-600';
+                iconEl.innerHTML = '<i class="fa-solid fa-check"></i>';
+            } else {
+                iconEl.className = 'w-12 h-12 rounded-full mx-auto flex items-center justify-center text-xl bg-rose-50 text-rose-600';
+                iconEl.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i>';
+            }
+            document.getElementById('messageTitle').innerText = title;
+            document.getElementById('messageText').innerText = text;
+            document.getElementById('messageModal').classList.remove('hidden');
+        }
+
+        function closeMessageModal() {
+            document.getElementById('messageModal').classList.add('hidden');
+        }
+
+        // Participants Management
+        function renderParticipantsList() {
+            const container = document.getElementById('participantsList');
+            if (state.participants.length === 0) {
+                container.innerHTML = '<div class="p-4 text-center text-slate-400 text-sm">אין משתתפים רשומים</div>';
+                return;
+            }
+            container.innerHTML = state.participants.map(p => `
+                <div class="flex items-center justify-between p-3">
+                    <span class="font-medium text-sm text-slate-700">${p}</span>
+                    <button onclick="removeParticipant('${p}')" class="text-slate-400 hover:text-rose-600 transition p-1">
+                        <i class="fa-solid fa-trash-can text-xs"></i>
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        function handleAddParticipant(e) {
+            e.preventDefault();
+            const nameInput = document.getElementById('newParticipantName');
+            const name = nameInput.value.trim();
+            if (!name) return;
+            if (state.participants.includes(name)) {
+                showMessage('שגיאה', 'משתתף בשם זהה כבר קיים.', 'error');
+                return;
+            }
+            state.participants.push(name);
+            saveData();
+            nameInput.value = '';
+            renderParticipantsList();
+            updateAllUI();
+        }
+
+        function removeParticipant(name) {
+            // Check if participant is involved in expenses
+            const involved = state.expenses.some(exp => exp.payer === name || exp.splitBetween.includes(name));
+            if (involved) {
+                showMessage('לא ניתן למחוק', 'לא ניתן למחוק משתתף המקושר להוצאות קיימות.', 'error');
+                return;
+            }
+            state.participants = state.participants.filter(p => p !== name);
+            saveData();
+            renderParticipantsList();
+            updateAllUI();
+        }
+
+        // Populate Payers & Checkboxes
+        function populatePayerDropdown(selectedPayer = '') {
+            const payerSelect = document.getElementById('expensePayer');
+            payerSelect.innerHTML = state.participants.map(p => `
+                <option value="${p}" ${p === selectedPayer ? 'selected' : ''}>${p}</option>
+            `).join('');
+
+            // Also update filter dropdown
+            const filterSelect = document.getElementById('filterPayer');
+            const currentFilter = filterSelect.value;
+            filterSelect.innerHTML = '<option value="">כל המשלמים</option>' + state.participants.map(p => `
+                <option value="${p}" ${p === currentFilter ? 'selected' : ''}>${p}</option>
+            `).join('');
+        }
+
+        function populateSplitCheckboxes(selectedList = []) {
+            const container = document.getElementById('splitParticipantsContainer');
+            container.innerHTML = state.participants.map(p => {
+                const isChecked = selectedList.length === 0 || selectedList.includes(p);
+                return `
+                    <label class="flex items-center gap-2 cursor-pointer select-none">
+                        <input type="checkbox" name="splitParticipant" value="${p}" ${isChecked ? 'checked' : ''} class="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500">
+                        <span class="text-sm text-slate-700">${p}</span>
+                    </label>
+                `;
+            }).join('');
+        }
+
+        function toggleAllParticipants(checkState) {
+            const checkboxes = document.querySelectorAll('input[name="splitParticipant"]');
+            checkboxes.forEach(cb => cb.checked = checkState);
+        }
+
+        function handleExpenseSubmit(e) {
+            e.preventDefault();
+            const id = document.getElementById('expenseId').value;
+            const desc = document.getElementById('expenseDesc').value.trim();
+            const amount = parseFloat(document.getElementById('expenseAmount').value);
+            const date = document.getElementById('expenseDate').value;
+            const payer = document.getElementById('expensePayer').value;
+            
+            const splitCheckboxes = document.querySelectorAll('input[name="splitParticipant"]:checked');
+            const splitBetween = Array.from(splitCheckboxes).map(cb => cb.value);
+
+            if (splitBetween.length === 0) {
+                showMessage('שגיאה', 'יש לבחור לפחות משתתף אחד להתחלקות בהוצאה.', 'error');
+                return;
+            }
+
+            if (id) {
+                // Edit existing
+                const index = state.expenses.findIndex(ex => ex.id === id);
+                if (index !== -1) {
+                    state.expenses[index] = { id, desc, amount, date, payer, splitBetween };
+                }
+            } else {
+                // Add new
+                const newExpense = {
+                    id: Date.now().toString(),
+                    desc,
+                    amount,
+                    date,
+                    payer,
+                    splitBetween
+                };
+                state.expenses.push(newExpense);
+            }
+
+            saveData();
+            closeModal('expenseModal');
+            updateAllUI();
+        }
+
+        function editExpense(id) {
+            const expense = state.expenses.find(ex => ex.id === id);
+            if (!expense) return;
+
+            document.getElementById('expenseId').value = expense.id;
+            document.getElementById('expenseDesc').value = expense.desc;
+            document.getElementById('expenseAmount').value = expense.amount;
+            document.getElementById('expenseDate').value = expense.date;
+            document.getElementById('expenseModalTitle').innerText = 'עריכת הוצאה';
+            
+            populatePayerDropdown(expense.payer);
+            populateSplitCheckboxes(expense.splitBetween);
+            
+            document.getElementById('expenseModal').classList.remove('hidden');
+        }
+
+        function deleteExpense(id) {
+            state.expenses = state.expenses.filter(ex => ex.id !== id);
+            saveData();
+            updateAllUI();
+        }
+
+        function renderExpenses() {
+            const container = document.getElementById('expensesContainer');
+            const searchVal = document.getElementById('searchInput').value.toLowerCase();
+            const filterPayerVal = document.getElementById('filterPayer').value;
+
+            let filtered = state.expenses.filter(ex => {
+                const matchesSearch = ex.desc.toLowerCase().includes(searchVal) || ex.payer.toLowerCase().includes(searchVal);
+                const matchesPayer = !filterPayerVal || ex.payer === filterPayerVal;
+                return matchesSearch && matchesPayer;
+            });
+
+            // Sort by date descending
+            filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+            document.getElementById('totalExpensesCount').innerText = state.expenses.length;
+            const totalSpent = state.expenses.reduce((sum, ex) => sum + ex.amount, 0);
+            document.getElementById('totalSpent').innerText = '₪' + totalSpent.toFixed(2);
+
+            if (filtered.length === 0) {
+                container.innerHTML = '<div class="p-8 text-center text-slate-400 text-sm">אין הוצאות להצגה</div>';
+                return;
+            }
+
+            container.innerHTML = filtered.map(ex => `
+                <div class="p-4 hover:bg-slate-50/80 transition flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                    <div class="space-y-1">
+                        <div class="flex items-center gap-2">
+                            <span class="font-bold text-slate-800 text-base">${ex.desc}</span>
+                            <span class="bg-indigo-50 text-indigo-700 text-xs px-2.5 py-0.5 rounded-full font-medium">שילם/ה: ${ex.payer}</span>
+                        </div>
+                        <p class="text-xs text-slate-400 flex items-center gap-2">
+                            <span><i class="fa-regular fa-calendar ml-1"></i>${ex.date}</span>
+                            <span>•</span>
+                            <span>מתחלק בין: ${ex.splitBetween.join(', ')}</span>
+                        </p>
+                    </div>
+                    <div class="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-end">
+                        <span class="font-bold text-slate-800 text-lg">₪${ex.amount.toFixed(2)}</span>
+                        <div class="flex items-center gap-1">
+                            <button onclick="editExpense('${ex.id}')" class="text-slate-400 hover:text-indigo-600 p-2 transition">
+                                <i class="fa-solid fa-pen text-xs"></i>
+                            </button>
+                            <button onclick="deleteExpense('${ex.id}')" class="text-slate-400 hover:text-rose-600 p-2 transition">
+                                <i class="fa-solid fa-trash-can text-xs"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function calculateBalances() {
+            // Net balance per participant: Paid - Owed share
+            const balances = {};
+            state.participants.forEach(p => balances[p] = 0);
+
+            state.expenses.forEach(ex => {
+                // Payer gets credited with the full amount
+                if (balances[ex.payer] !== undefined) {
+                    balances[ex.payer] += ex.amount;
+                }
+                // Each person in splitBetween owes their share
+                const share = ex.amount / ex.splitBetween.length;
+                ex.splitBetween.forEach(person => {
+                    if (balances[person] !== undefined) {
+                        balances[person] -= share;
+                    }
+                });
+            });
+
+            return balances;
+        }
+
+        function renderBalances() {
+            const container = document.getElementById('balancesContainer');
+            const balances = calculateBalances();
+
+            if (state.participants.length === 0) {
+                container.innerHTML = '<div class="text-center text-slate-400 text-sm">אין משתתפים</div>';
+                return;
+            }
+
+            container.innerHTML = state.participants.map(p => {
+                const bal = balances[p] || 0;
+                const isPositive = bal >= 0;
+                const colorClass = isPositive ? 'text-emerald-600 bg-emerald-50' : 'text-rose-600 bg-rose-50';
+                const sign = isPositive ? '+' : '';
+                return `
+                    <div class="flex items-center justify-between p-3 bg-slate-50 rounded-xl">
+                        <span class="font-medium text-sm text-slate-700">${p}</span>
+                        <span class="font-bold text-sm px-3 py-1 rounded-lg ${colorClass}">
+                            ${sign}₪${bal.toFixed(2)}
+                        </span>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Smart Settlement Algorithm (Debt Simplification)
+        function renderSmartSettlement() {
+            const container = document.getElementById('settlementContainer');
+            const balances = calculateBalances();
+
+            // Separate debtors (negative balance) and creditors (positive balance)
+            let debtors = [];
+            let creditors = [];
+
+            Object.keys(balances).forEach(p => {
+                const amt = Math.round((balances[p] + Number.EPSILON) * 100) / 100;
+                if (amt < -0.01) {
+                    debtors.push({ name: p, amount: -amt }); // amount owed (positive value)
+                } else if (amt > 0.01) {
+                    creditors.push({ name: p, amount: amt }); // amount to receive
+                }
+            });
+
+            // Sort both arrays descending to optimize matching
+            debtors.sort((a, b) => b.amount - a.amount);
+            creditors.sort((a, b) => b.amount - a.amount);
+
+            let transactions = [];
+            let i = 0, j = 0;
+
+            while (i < debtors.length && j < creditors.length) {
+                let debtor = debtors[i];
+                let creditor = creditors[j];
+
+                let settleAmount = Math.min(debtor.amount, creditor.amount);
+                settleAmount = Math.round((settleAmount + Number.EPSILON) * 100) / 100;
+
+                if (settleAmount > 0.01) {
+                    transactions.push({
+                        from: debtor.name,
+                        to: creditor.name,
+                        amount: settleAmount
+                    });
+                }
+
+                debtor.amount -= settleAmount;
+                creditor.amount -= settleAmount;
+
+                if (debtor.amount < 0.01) i++;
+                if (creditor.amount < 0.01) j++;
+            }
+
+            if (transactions.length === 0) {
+                container.innerHTML = '<div class="text-indigo-200 text-sm py-2">הכל מאוזן! אין חובות פתוחים כרגע. ✨</div>';
+                return;
+            }
+
+            container.innerHTML = transactions.map(t => `
+                <div class="bg-white/10 backdrop-blur-sm p-3 rounded-xl flex items-center justify-between text-sm">
+                    <div class="flex items-center gap-2 font-medium">
+                        <span class="text-white">${t.from}</span>
+                        <i class="fa-solid fa-arrow-left text-xs text-indigo-300"></i>
+                        <span class="text-white">${t.to}</span>
+                    </div>
+                    <span class="font-bold text-amber-300 bg-white/10 px-2.5 py-1 rounded-lg">₪${t.amount.toFixed(2)}</span>
+                </div>
+            `).join('');
+        }
+
+        // Export, Import & Reset
+        function exportData() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state, null, 2));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", `trip_expenses_${new Date().toISOString().split('T')[0]}.json`);
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+        }
+
+        function importData(event) {
+            const fileReader = new FileReader();
+            if (event.target.files[0]) {
+                fileReader.readAsText(event.target.files[0], "UTF-8");
+                fileReader.onload = function(e) {
+                    try {
+                        const parsed = JSON.parse(e.target.result);
+                        if (parsed.participants && parsed.expenses) {
+                            state = parsed;
+                            saveData();
+                            updateAllUI();
+                            showMessage('הצלחה', 'הנתונים יובאו בהצלחה!', 'success');
+                        } else {
+                            throw new Error('Invalid format');
+                        }
+                    } catch (err) {
+                        showMessage('שגיאה', 'קובץ הנתונים אינו תקין.', 'error');
+                    }
+                };
+            }
+        }
+
+        function resetData() {
+            if (confirm('האם אתה בטוח שברצונך לאפס את כל הנתונים?')) {
+                state = { participants: ['אלון', 'נועה', 'יובל', 'מאיה'], expenses: [] };
+                saveData();
+                updateAllUI();
+                showMessage('איפוס הושלם', 'כל הנתונים אופסו בהצלחה.', 'success');
+            }
+        }
+
+        function updateAllUI() {
+            populatePayerDropdown();
+            renderExpenses();
+            renderBalances();
+            renderSmartSettlement();
+        }
+
+        // Initialize on load
+        window.onload = function() {
+            loadData();
+            updateAllUI();
+        };
+    </script>
+</body>
+</html>
