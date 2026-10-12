@@ -35,7 +35,7 @@
                     <input type="text" id="new-member-name" placeholder="שם משתתף חדש..." class="flex-grow border border-gray-300 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                     <button onclick="addMember()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-xl font-medium transition">הוסף</button>
                 </div>
-                <div id="members-list" class="flex flex-wrap gap-2"></div>
+                <div id="members-list" class="flex flex-wrap gap-2 text-gray-400 text-sm">טרם נוספו משתתפים.</div>
             </div>
         </section>
 
@@ -61,7 +61,9 @@
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label class="block text-sm font-medium text-gray-600 mb-1">מי שילם?</label>
-                            <select id="expense-payer" required class="w-full border border-gray-300 rounded-xl px-4 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"></select>
+                            <select id="expense-payer" required class="w-full border border-gray-300 rounded-xl px-4 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                <option value="">בחר משתתף...</option>
+                            </select>
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-600 mb-1">תאריך</label>
@@ -74,7 +76,7 @@
                             <label class="block text-sm font-medium text-gray-600">מתחלק בין (בחר משתתפים):</label>
                             <button type="button" onclick="toggleSelectAllParticipants(true)" class="text-xs text-indigo-600 hover:underline">בחר הכל</button>
                         </div>
-                        <div id="expense-participants" class="grid grid-cols-2 sm:grid-cols-3 gap-2 bg-gray-50 p-3 rounded-xl border border-gray-200 max-h-36 overflow-y-auto"></div>
+                        <div id="expense-participants" class="grid grid-cols-2 sm:grid-cols-3 gap-2 bg-gray-50 p-3 rounded-xl border border-gray-200 max-h-36 overflow-y-auto text-sm text-gray-400">יש להוסיף משתתפים תחילה.</div>
                     </div>
 
                     <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-xl font-semibold shadow transition">שמור הוצאה בענן</button>
@@ -90,9 +92,47 @@
                     <span id="icon-section-balances" class="text-gray-400 font-bold text-lg">▲</span>
                 </div>
                 <div id="section-balances" class="mt-4 space-y-3">
-                    <div id="balances-list" class="space-y-3"></div>
+                    <div id="balances-list" class="space-y-3 text-gray-400 text-sm">אין נתונים עדיין.</div>
                 </div>
             </div>
 
             <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                <div class="flex justify-between items-center cursor-pointer select-none" onclick="toggleSection
+                <div class="flex justify-between items-center cursor-pointer select-none" onclick="toggleSection('section-settlements')">
+                    <h2 class="text-lg font-semibold text-gray-700">💡 קיזוז חובות אופטימלי</h2>
+                    <span id="icon-section-settlements" class="text-gray-400 font-bold text-lg">▲</span>
+                </div>
+                <div id="section-settlements" class="mt-4 space-y-3">
+                    <div id="settlements-list" class="space-y-3 text-gray-400 text-sm">אין נתונים לחישוב.</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- רשימת ההוצאות -->
+        <section class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+            <div class="flex justify-between items-center cursor-pointer select-none" onclick="toggleSection('section-expenses')">
+                <h2 class="text-lg font-semibold text-gray-700">📜 היסטוריית הוצאות <span class="text-xs text-red-500 font-normal">(מחיקה דורשת סיסמת מנהל 🔒)</span></h2>
+                <span id="icon-section-expenses" class="text-gray-400 font-bold text-lg">▲</span>
+            </div>
+            <div id="section-expenses" class="mt-4 overflow-x-auto">
+                <table class="w-full text-right">
+                    <thead>
+                        <tr class="border-b text-gray-500 text-sm">
+                            <th class="pb-2">תאריך</th>
+                            <th class="pb-2">תיאור</th>
+                            <th class="pb-2">סכום</th>
+                            <th class="pb-2">שילם / מתחלק בין</th>
+                            <th class="pb-2 text-center">פעולות</th>
+                        </tr>
+                    </thead>
+                    <tbody id="expenses-table-body" class="divide-y text-sm">
+                        <tr><td colspan="5" class="py-4 text-center text-gray-400">אין הוצאות רשומות.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- סקריפטים של Firebase והלוגיקה -->
+    <script type="module">
+        import { initializeApp } from "
